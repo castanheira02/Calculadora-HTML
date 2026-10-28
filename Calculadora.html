@@ -1,0 +1,221 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Calculadora</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: a compact calculator card with a running history beside it; the history drops below on narrow screens. */
+:root{
+  --bg:#e9edea; --card:#f6f8f6; --key:#ffffff; --key-hover:#f0f4f1; --fn:#dfe6e1; --fg:#17211c; --muted:#5d6e65;
+  --accent:#1c6b57; --accent-fg:#ffffff; --op:#d3e6dd; --op-fg:#124a3c; --line:#ccd6d0; --danger:#a33a2a;
+  --sans:'Familjen Grotesk',system-ui,sans-serif; --mono:'DM Mono',ui-monospace,SFMono-Regular,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1512; --card:#161e1a; --key:#1f2924; --key-hover:#27332d; --fn:#2a3731; --fg:#e8f0eb; --muted:#93a69b;
+  --accent:#5fd3a6; --accent-fg:#08241b; --op:#25443a; --op-fg:#b8f0d9; --line:#2b3832; --danger:#ff9b87; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1512; --card:#161e1a; --key:#1f2924; --key-hover:#27332d; --fn:#2a3731; --fg:#e8f0eb; --muted:#93a69b;
+  --accent:#5fd3a6; --accent-fg:#08241b; --op:#25443a; --op-fg:#b8f0d9; --line:#2b3832; --danger:#ff9b87; color-scheme:dark}
+
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);
+  padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.app{max-width:720px;margin:0 auto;display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:640px){.app{grid-template-columns:minmax(0,1fr)}}
+
+.calc{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.screen{display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-end;gap:4px;min-height:96px;padding:6px 8px 2px;min-width:0}
+.expr{font-family:var(--mono);font-size:14px;color:var(--muted);min-height:1.3em;max-width:100%;overflow-wrap:anywhere;text-align:right;font-variant-numeric:tabular-nums}
+.out{font-family:var(--mono);font-weight:500;font-size:44px;line-height:1.1;letter-spacing:-.02em;max-width:100%;overflow-wrap:anywhere;text-align:right;font-variant-numeric:tabular-nums}
+.out.m{font-size:32px}.out.s{font-size:24px}
+.out.err{font-family:var(--sans);font-size:20px;color:var(--danger);letter-spacing:0}
+
+.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.keys button{font:inherit;font-size:22px;font-weight:500;height:58px;border:0;border-radius:12px;background:var(--key);color:var(--fg);cursor:pointer;
+  box-shadow:inset 0 0 0 1px var(--line);transition:transform .06s ease,background .12s ease}
+.keys button:hover{background:var(--key-hover)}
+.keys button:active{transform:scale(.96)}
+.keys button.fn{background:var(--fn);font-size:18px}
+.keys button.op{background:var(--op);color:var(--op-fg);box-shadow:none}
+.keys button.op[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.keys button.eq{background:var(--accent);color:var(--accent-fg);box-shadow:none}
+.keys button.zero{grid-column:span 2}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.hist{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.hist header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.hist h2{margin:0;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.hist .clear{font:inherit;font-size:13px;color:var(--muted);background:none;border:0;padding:4px 6px;border-radius:6px;cursor:pointer}
+.hist .clear:hover{color:var(--fg)}
+.hist ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto}
+.hist li button{width:100%;text-align:right;font:inherit;background:none;border:0;border-radius:8px;padding:8px 10px;cursor:pointer;color:var(--fg);display:flex;flex-direction:column;gap:2px;align-items:flex-end;min-width:0}
+.hist li button:hover{background:var(--key-hover)}
+.hist .a{font-family:var(--mono);font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.hist .b{font-family:var(--mono);font-size:18px;font-weight:500;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.empty{margin:0;font-size:14px;color:var(--muted);line-height:1.5}
+.tip{margin:0;font-size:12px;color:var(--muted);line-height:1.5}
+@media (prefers-reduced-motion:reduce){.keys button{transition:none}}
+</style>
+
+<div class="app">
+  <section class="calc" aria-label="Calculadora">
+    <div class="screen">
+      <div class="expr" id="expr"></div>
+      <div class="out" id="out" role="status" aria-live="polite">0</div>
+    </div>
+    <div class="keys" id="keys">
+      <button class="fn" data-k="C" type="button" aria-label="Limpar tudo">C</button>
+      <button class="fn" data-k="neg" type="button" aria-label="Trocar sinal">+/−</button>
+      <button class="fn" data-k="pct" type="button" aria-label="Percentagem">%</button>
+      <button class="op" data-k="/" type="button" aria-label="Dividir">÷</button>
+      <button data-k="7" type="button">7</button>
+      <button data-k="8" type="button">8</button>
+      <button data-k="9" type="button">9</button>
+      <button class="op" data-k="*" type="button" aria-label="Multiplicar">×</button>
+      <button data-k="4" type="button">4</button>
+      <button data-k="5" type="button">5</button>
+      <button data-k="6" type="button">6</button>
+      <button class="op" data-k="-" type="button" aria-label="Subtrair">−</button>
+      <button data-k="1" type="button">1</button>
+      <button data-k="2" type="button">2</button>
+      <button data-k="3" type="button">3</button>
+      <button class="op" data-k="+" type="button" aria-label="Somar">+</button>
+      <button class="zero" data-k="0" type="button">0</button>
+      <button data-k="." type="button" aria-label="Vírgula decimal">,</button>
+      <button class="eq" data-k="=" type="button" aria-label="Igual">=</button>
+    </div>
+    <p class="tip">Funciona com o teclado: números, + − * /, Enter, Backspace e Esc.</p>
+  </section>
+
+  <section class="hist" aria-label="Histórico">
+    <header>
+      <h2>Histórico</h2>
+      <button class="clear" id="clearHist" type="button">Limpar</button>
+    </header>
+    <p class="empty" id="empty">As contas feitas aparecem aqui. Toque numa para reutilizar o resultado.</p>
+    <ul id="list"></ul>
+  </section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const outEl=$('out'),exprEl=$('expr'),listEl=$('list'),emptyEl=$('empty');
+const SYM={'+':'+','-':'−','*':'×','/':'÷'};
+let cur='0',prev=null,op=null,fresh=false,justEq=false,err=false,lastExpr='';
+let hist=[];
+
+const clean=v=>String(parseFloat(Number(v).toPrecision(12)));
+function fmt(s){
+  s=String(s);
+  let neg='';if(s[0]==='-'){neg='−';s=s.slice(1)}
+  if(/e/i.test(s))return neg+s.replace('.',',');
+  const [i,d]=s.split('.');
+  const g=i.replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+  return neg+g+(d!==undefined?','+d:'');
+}
+function calc(a,b,o){
+  a=parseFloat(a);b=parseFloat(b);
+  if(o==='+')return a+b;
+  if(o==='-')return a-b;
+  if(o==='*')return a*b;
+  if(o==='/')return b===0?null:a/b;
+}
+function fail(){err=true;cur='0';prev=null;op=null;fresh=false;justEq=false;lastExpr=''}
+function reset(){cur='0';prev=null;op=null;fresh=false;justEq=false;err=false;lastExpr=''}
+
+function digit(d){
+  if(justEq){cur='0';justEq=false;lastExpr=''}
+  if(fresh){cur='0';fresh=false}
+  if(cur==='0')cur=d;
+  else if(cur.replace(/[-.]/g,'').length<15)cur+=d;
+}
+function dot(){
+  if(justEq){cur='0';justEq=false;lastExpr=''}
+  if(fresh){cur='0';fresh=false}
+  if(!cur.includes('.'))cur+='.';
+}
+function operator(o){
+  justEq=false;lastExpr='';
+  if(op&&!fresh){
+    const r=calc(prev,cur,op);
+    if(r===null||!isFinite(r)){fail();return}
+    prev=clean(r);cur=prev;
+  }else if(prev===null){prev=cur}
+  op=o;fresh=true;
+}
+function equals(){
+  if(!op||prev===null)return;
+  const r=calc(prev,cur,op);
+  if(r===null||!isFinite(r)){fail();return}
+  const res=clean(r);
+  const e=fmt(prev)+' '+SYM[op]+' '+fmt(cur);
+  hist.unshift({e,r:res});if(hist.length>30)hist.pop();
+  lastExpr=e+' =';cur=res;prev=null;op=null;fresh=false;justEq=true;
+  renderHist();
+}
+function negate(){if(cur!=='0'){cur=cur[0]==='-'?cur.slice(1):'-'+cur}}
+function percent(){
+  let v=parseFloat(cur);
+  v=(prev!==null&&(op==='+'||op==='-'))?parseFloat(prev)*v/100:v/100;
+  cur=clean(v);
+}
+function back(){
+  if(justEq||fresh)return;
+  cur=cur.length>1&&!(cur.length===2&&cur[0]==='-')?cur.slice(0,-1):'0';
+}
+
+function press(k){
+  if(err&&k!=='C'){reset()}
+  if(/^\d$/.test(k))digit(k);
+  else if(k==='.')dot();
+  else if('+-*/'.includes(k))operator(k);
+  else if(k==='=')equals();
+  else if(k==='C')reset();
+  else if(k==='neg')negate();
+  else if(k==='pct')percent();
+  else if(k==='back')back();
+  render();
+}
+
+function render(){
+  if(err){outEl.textContent='Não dá para dividir por zero';outEl.className='out err';exprEl.textContent=''}
+  else{
+    const t=fmt(cur);outEl.textContent=t;
+    outEl.className='out'+(t.length>16?' s':t.length>10?' m':'');
+    exprEl.textContent=lastExpr||(prev!==null&&op?fmt(prev)+' '+SYM[op]+(fresh?'':' '+fmt(cur)):'');
+  }
+  document.querySelectorAll('.keys .op').forEach(b=>b.setAttribute('aria-pressed',String(!err&&fresh&&op===b.dataset.k)));
+}
+function renderHist(){
+  listEl.textContent='';
+  emptyEl.hidden=hist.length>0;
+  hist.forEach(h=>{
+    const li=document.createElement('li'),b=document.createElement('button');b.type='button';
+    const a=document.createElement('span');a.className='a';a.textContent=h.e+' =';
+    const r=document.createElement('span');r.className='b';r.textContent=fmt(h.r);
+    b.append(a,r);
+    b.addEventListener('click',()=>{err=false;cur=h.r;prev=null;op=null;fresh=false;justEq=true;lastExpr='';render()});
+    li.appendChild(b);listEl.appendChild(li);
+  });
+}
+
+$('keys').addEventListener('click',e=>{const b=e.target.closest('button[data-k]');if(b)press(b.dataset.k)});
+$('clearHist').addEventListener('click',()=>{hist=[];renderHist()});
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  const k=e.key;
+  if(/^\d$/.test(k))press(k);
+  else if(k==='.'||k===',')press('.');
+  else if(k==='+'||k==='-'||k==='*'||k==='/')press(k);
+  else if(k==='x'||k==='X')press('*');
+  else if(k==='%')press('pct');
+  else if(k==='Enter'||k==='='){e.preventDefault();press('=')}
+  else if(k==='Backspace')press('back');
+  else if(k==='Escape'||k==='Delete')press('C');
+  else return;
+  if(k==='/')e.preventDefault();
+});
+renderHist();render();
+</script>
+
+</body></html>
